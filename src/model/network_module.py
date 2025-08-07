@@ -3,12 +3,13 @@ import torch.nn.functional as F
 import torch.nn as nn
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import ReduceLROnPlateau
+import pytorch_lightning as pl
+from torchmetrics import Accuracy
 from model.residual_attention_network import (
     ResidualAttentionModel_56 as ResidualAttentionModel,
 )
-import pytorch_lightning as pl
+
 from datetime import datetime
-import pandas as pd
 import os
 
 class ParametersClassifier(pl.LightningModule):
@@ -42,17 +43,18 @@ class ParametersClassifier(pl.LightningModule):
                     param.requires_grad = False
         self.save_hyperparameters()
 
-        self.train_acc = pl.metrics.Accuracy()
-        self.train_acc0 = pl.metrics.Accuracy()
-        self.train_acc1 = pl.metrics.Accuracy()
-        self.train_acc2 = pl.metrics.Accuracy()
-        self.train_acc3 = pl.metrics.Accuracy()
-        self.val_acc = pl.metrics.Accuracy()
-        self.val_acc0 = pl.metrics.Accuracy()
-        self.val_acc1 = pl.metrics.Accuracy()
-        self.val_acc2 = pl.metrics.Accuracy()
-        self.val_acc3 = pl.metrics.Accuracy()
-        self.test_acc = pl.metrics.Accuracy()
+        # Updated Accuracy metrics with task="multiclass" and num_classes=num_classes
+        self.train_acc = Accuracy(task="multiclass", num_classes=num_classes)
+        self.train_acc0 = Accuracy(task="multiclass", num_classes=num_classes)
+        self.train_acc1 = Accuracy(task="multiclass", num_classes=num_classes)
+        self.train_acc2 = Accuracy(task="multiclass", num_classes=num_classes)
+        self.train_acc3 = Accuracy(task="multiclass", num_classes=num_classes)
+        self.val_acc = Accuracy(task="multiclass", num_classes=num_classes)
+        self.val_acc0 = Accuracy(task="multiclass", num_classes=num_classes)
+        self.val_acc1 = Accuracy(task="multiclass", num_classes=num_classes)
+        self.val_acc2 = Accuracy(task="multiclass", num_classes=num_classes)
+        self.val_acc3 = Accuracy(task="multiclass", num_classes=num_classes)
+        self.test_acc = Accuracy(task="multiclass", num_classes=num_classes)
 
         self.name = "ResidualAttentionClassifier"
         self.retrieve_layers = retrieve_layers
@@ -107,107 +109,14 @@ class ParametersClassifier(pl.LightningModule):
         loss = loss0 + loss1 + loss2 + loss3
         preds = torch.stack((preds0, preds1, preds2, preds3))
 
-        self.log(
-            "train_loss",
-            loss,
-            prog_bar=True,
-            on_step=True,
-            on_epoch=True,
-            logger=True,
-            sync_dist=self.sync_dist,
-            sync_dist_op="mean",
-        )
-        self.log(
-            "train_loss0",
-            loss0,
-            on_epoch=True,
-            logger=True,
-            sync_dist=self.sync_dist,
-            sync_dist_op="mean",
-        )
-        self.log(
-            "train_loss1",
-            loss1,
-            on_epoch=True,
-            logger=True,
-            sync_dist=self.sync_dist,
-            sync_dist_op="mean",
-        )
-        self.log(
-            "train_loss2",
-            loss2,
-            on_epoch=True,
-            logger=True,
-            sync_dist=self.sync_dist,
-            sync_dist_op="mean",
-        )
-        self.log(
-            "train_loss3",
-            loss3,
-            on_epoch=True,
-            logger=True,
-            sync_dist=self.sync_dist,
-            sync_dist_op="mean",
-        )
-
+        self.log("train_loss", loss, prog_bar=True, on_step=True, on_epoch=True, logger=True, sync_dist=self.sync_dist)
         self.train_acc(preds, y)
         self.train_acc0(preds0, y[0])
         self.train_acc1(preds1, y[1])
         self.train_acc2(preds2, y[2])
         self.train_acc3(preds3, y[3])
 
-        self.log(
-            "train_acc",
-            self.train_acc,
-            prog_bar=True,
-            on_step=True,
-            on_epoch=True,
-            logger=True,
-            sync_dist=self.sync_dist,
-            sync_dist_op="mean",
-        )
-        self.log(
-            "train_acc0",
-            self.train_acc0,
-            on_epoch=True,
-            logger=True,
-            sync_dist=self.sync_dist,
-            sync_dist_op="mean",
-        )
-        self.log(
-            "train_acc1",
-            self.train_acc1,
-            on_epoch=True,
-            logger=True,
-            sync_dist=self.sync_dist,
-            sync_dist_op="mean",
-        )
-        self.log(
-            "train_acc2",
-            self.train_acc2,
-            on_epoch=True,
-            logger=True,
-            sync_dist=self.sync_dist,
-            sync_dist_op="mean",
-        )
-        self.log(
-            "train_acc3",
-            self.train_acc3,
-            on_epoch=True,
-            logger=True,
-            sync_dist=self.sync_dist,
-            sync_dist_op="mean",
-        )
-
-        self.log(
-            "lr",
-            self.trainer.optimizers[0].param_groups[0]["lr"],
-            on_epoch=True,
-            prog_bar=True,
-            logger=True,
-            sync_dist=self.sync_dist,
-            sync_dist_op="mean",
-        )
+        self.log("train_acc", self.train_acc, prog_bar=True, on_step=True, on_epoch=True, logger=True, sync_dist=self.sync_dist)
         return loss
 
     def validation_step(self, val_batch, batch_idx):
@@ -231,95 +140,14 @@ class ParametersClassifier(pl.LightningModule):
         loss = loss0 + loss1 + loss2 + loss3
         preds = torch.stack((preds0, preds1, preds2, preds3))
 
-        self.log(
-            "val_loss",
-            loss,
-            prog_bar=True,
-            on_epoch=True,
-            logger=True,
-            sync_dist=self.sync_dist,
-            sync_dist_op="mean",
-        )
-        self.log(
-            "val_loss0",
-            loss0,
-            on_epoch=True,
-            logger=True,
-            sync_dist=self.sync_dist,
-            sync_dist_op="mean",
-        )
-        self.log(
-            "val_loss1",
-            loss1,
-            on_epoch=True,
-            logger=True,
-            sync_dist=self.sync_dist,
-            sync_dist_op="mean",
-        )
-        self.log(
-            "val_loss2",
-            loss2,
-            on_epoch=True,
-            logger=True,
-            sync_dist=self.sync_dist,
-            sync_dist_op="mean",
-        )
-        self.log(
-            "val_loss3",
-            loss3,
-            on_epoch=True,
-            logger=True,
-            sync_dist=self.sync_dist,
-            sync_dist_op="mean",
-        )
-
+        self.log("val_loss", loss, prog_bar=True, on_epoch=True, logger=True, sync_dist=self.sync_dist)
         self.val_acc(preds, y)
         self.val_acc0(preds0, y[0])
         self.val_acc1(preds1, y[1])
         self.val_acc2(preds2, y[2])
         self.val_acc3(preds3, y[3])
 
-        self.log(
-            "val_acc",
-            self.val_acc,
-            prog_bar=True,
-            on_epoch=True,
-            logger=True,
-            sync_dist=self.sync_dist,
-            sync_dist_op="mean",
-        )
-        self.log(
-            "val_acc0",
-            self.val_acc0,
-            on_epoch=True,
-            logger=True,
-            sync_dist=self.sync_dist,
-            sync_dist_op="mean",
-        )
-        self.log(
-            "val_acc1",
-            self.val_acc1,
-            on_epoch=True,
-            logger=True,
-            sync_dist=self.sync_dist,
-            sync_dist_op="mean",
-        )
-        self.log(
-            "val_acc2",
-            self.val_acc2,
-            on_epoch=True,
-            logger=True,
-            sync_dist=self.sync_dist,
-            sync_dist_op="mean",
-        )
-        self.log(
-            "val_acc3",
-            self.val_acc3,
-            on_epoch=True,
-            logger=True,
-            sync_dist=self.sync_dist,
-            sync_dist_op="mean",
-        )
+        self.log("val_acc", self.val_acc, prog_bar=True, on_epoch=True, logger=True, sync_dist=self.sync_dist)
         return loss
 
     def test_step(self, test_batch, batch_idx):
@@ -342,31 +170,10 @@ class ParametersClassifier(pl.LightningModule):
 
         loss = loss0 + loss1 + loss2 + loss3
 
-        self.log("test_loss0", loss0)
-        self.log("test_loss1", loss1)
-        self.log("test_loss2", loss2)
-        self.log("test_loss3", loss3)
-
         preds = torch.stack((preds0, preds1, preds2, preds3))
-        self.log(
-            "test_loss",
-            loss,
-            on_step=True,
-            on_epoch=True,
-            logger=True,
-            sync_dist=self.sync_dist,
-            sync_dist_op="mean",
-        )
+        self.log("test_loss", loss, on_step=True, on_epoch=True, logger=True, sync_dist=self.sync_dist)
         self.test_acc(preds, y)
-        self.log(
-            "test_acc",
-            self.test_acc,
-            on_step=True,
-            on_epoch=True,
-            logger=True,
-            sync_dist=self.sync_dist,
-            sync_dist_op="mean",
-        )
+        self.log("test_acc", self.test_acc, on_step=True, on_epoch=True, logger=True, sync_dist=self.sync_dist)
         return {"loss": loss, "preds": preds, "targets": y}
 
     def test_epoch_end(self, outputs):
@@ -382,5 +189,5 @@ class ParametersClassifier(pl.LightningModule):
             torch.save(targets, "test/targets_test.pt")
         else:
             date_string = datetime.now().strftime("%H-%M_%d-%m-%y")
-            torch.save(preds, "test/preds_{}.pt".format(date_string))
-            torch.save(targets, "test/targets_{}.pt".format(date_string))
+            torch.save(preds, f"test/preds_{date_string}.pt")
+            torch.save(targets, f"test/targets_{date_string}.pt")

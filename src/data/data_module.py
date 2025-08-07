@@ -8,7 +8,6 @@ from data.dataset import ParametersDataset
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
-
 class ParametersDataModule(pl.LightningDataModule):
     def __init__(
         self,
@@ -26,6 +25,7 @@ class ParametersDataModule(pl.LightningDataModule):
         feed_rate=True,
         z_offset=True,
         hotend=True,
+        num_workers=8  # Added num_workers parameter with a default value
     ):
         super().__init__()
         self.data_dir = data_dir
@@ -35,6 +35,7 @@ class ParametersDataModule(pl.LightningDataModule):
         self.mean = mean
         self.std = std
         self.transform = transform
+        self.num_workers = num_workers  # Store num_workers as an instance attribute
 
         if self.transform:
             self.pre_crop_transform = transforms.Compose(
@@ -138,7 +139,7 @@ class ParametersDataModule(pl.LightningDataModule):
             self.train_dataset,
             batch_size=self.batch_size,
             shuffle=True,
-            num_workers=8,
+            num_workers=self.num_workers,  # Use instance attribute
             pin_memory=True,
         )
 
@@ -146,7 +147,7 @@ class ParametersDataModule(pl.LightningDataModule):
         return DataLoader(
             self.val_dataset,
             batch_size=self.batch_size,
-            num_workers=8,
+            num_workers=self.num_workers,  # Use instance attribute
             pin_memory=True,
         )
 
@@ -154,6 +155,6 @@ class ParametersDataModule(pl.LightningDataModule):
         return DataLoader(
             self.test_dataset,
             batch_size=self.batch_size,
-            num_workers=8,
+            num_workers=self.num_workers,  # Use instance attribute
             pin_memory=True,
         )
